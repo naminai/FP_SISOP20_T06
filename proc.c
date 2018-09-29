@@ -121,6 +121,10 @@ allocproc(void)
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
 
+  #ifdef CS333_P1
+  p->start_ticks = ticks;
+  #endif // CS333_P1
+
   return p;
 }
 
@@ -521,6 +525,43 @@ kill(int pid)
 // Runs when user types ^P on console.
 // No lock to avoid wedging a stuck machine further.
 
+/*
+#ifdef CS333_P1
+void
+displayheaders(void)
+{
+  cprintf("\nPID\tName\tElapsed\tState\tSize\tPCs\n");
+}
+#endif // CS333_P1
+
+#ifdef CS333_P1
+void
+elapsedtime(void)
+{
+  int elapsed;
+  int milliseconds;
+
+  struct proc *p;
+  char *state;
+  int size;
+  uint pc[10];
+
+  elapsed = ticks - p->start_ticks;
+  milliseconds = elapsed % 1000;
+  elapsed = elapsed/1000;
+
+  cprintf("%d\t%s\t%d.\t%s\t%d\t%d", p->pid, p->name, elapsed, state, size, pc);
+
+  if (milliseconds < 10)
+    cprintf("00");
+  else if (milliseconds < 100 && milliseconds >= 10)
+    cprintf("0");
+
+  cprintf("%d\t", milliseconds, "\n");
+}
+#endif // CS333_P1
+*/
+
 void
 procdump(void)
 {
@@ -529,6 +570,10 @@ procdump(void)
   char *state;
   uint pc[10];
 
+  #ifdef CS333_P1
+  cprintf("\nPID\tName\tElapsed\tState\tSize\tPCs\n");
+  #endif // CS333_P1
+
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->state == UNUSED)
       continue;
@@ -536,7 +581,27 @@ procdump(void)
       state = states[p->state];
     else
       state = "???";
+
+    #ifdef CS333_P1
+    int elapsed;
+    int milliseconds;
+    int size = p->sz;
+
+    elapsed = ticks - p->start_ticks;
+    milliseconds = elapsed % 1000;
+    elapsed = elapsed/1000;
+    /*
+    if (milliseconds < 10)
+      cprintf("00");
+    else if (milliseconds < 100 && milliseconds >= 10)
+      cprintf("0");
+    */
+    cprintf("%d\t%s\t%d.%d\t%s\t%d\t%p", p->pid, p->name, elapsed, milliseconds, state, size, pc);
+
+    #else
     cprintf("%d\t%s\t%s\t", p->pid, p->name, state);
+    #endif // CS333_P1
+
     if(p->state == SLEEPING){
       getcallerpcs((uint*)p->context->ebp+2, pc);
       for(i=0; i<10 && pc[i] != 0; i++)
