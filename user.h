@@ -1,6 +1,7 @@
 struct stat;
 struct rtcdate;
 
+// adding test comment
 // system calls
 int fork(void);
 int exit(void) __attribute__((noreturn));
