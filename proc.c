@@ -27,6 +27,9 @@ uint nextpid = 1;
 extern void forkret(void);
 extern void trapret(void);
 static void wakeup1(void* chan);
+#ifdef CS333_P1
+static void procdumpP1(struct proc *p, char *state);
+#endif // CS 333_P1
 
 void
 pinit(void)
@@ -120,6 +123,10 @@ allocproc(void)
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
+
+  #ifdef CS333_P1
+  p->start_ticks = ticks;
+  #endif // CS333_P1
 
   return p;
 }
@@ -520,6 +527,27 @@ kill(int pid)
 // Print a process listing to console.  For debugging.
 // Runs when user types ^P on console.
 // No lock to avoid wedging a stuck machine further.
+#ifdef CS333_P1
+void
+procdumpP1(struct proc *p, char *state)
+{
+  int milliseconds;
+  int elapsed;
+
+  elapsed = ticks - p->start_ticks;
+  milliseconds = elapsed % 1000;
+  elapsed = elapsed/1000;
+
+  cprintf("%d\t%s\t%d.", p->pid, p->name, elapsed);
+
+  if (milliseconds < 100 && milliseconds >= 10)
+    cprintf("00");
+  if (milliseconds < 10)
+    cprintf("0");
+
+  cprintf("%d\t%s\t%d\t%p", milliseconds, state, p->sz);
+}
+#endif // CS333_P1
 
 void
 procdump(void)
@@ -529,6 +557,18 @@ procdump(void)
   char *state;
   uint pc[10];
 
+#if defined(CS333_P4)
+#define HEADER "\nPID\tName\tUID\tGID\tPPID\tPrio\tElapsed\tCPU\tState\tSize\tPCs\n"
+#elif defined(CS333_P2)
+#define HEADER "\nPID\tName\tUID\tGID\tPPID\tElapsed\tCPU\tState\tSize\tPCs\n"
+#elif defined(CS333_P1)
+#define HEADER "\nPID\tName\tElapsed\tState\tSize\tPCs\n"
+#else
+#define HEADER "\n"
+#endif
+
+  cprintf(HEADER);
+
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->state == UNUSED)
       continue;
@@ -536,7 +576,17 @@ procdump(void)
       state = states[p->state];
     else
       state = "???";
-    cprintf("%d\t%s\t%s\t", p->pid, p->name, state);
+
+#if defined(CS333_P4)
+  //procdumpP4(p, state);
+#elif defined(CS333_P2)
+  //procdumpP2(p, state);
+#elif defined(CS333_P1)
+  procdumpP1(p, state);
+#else
+  cprintf("%d\t%s\t%s\t", p->pid, p->name, state);
+#endif
+
     if(p->state == SLEEPING){
       getcallerpcs((uint*)p->context->ebp+2, pc);
       for(i=0; i<10 && pc[i] != 0; i++)
