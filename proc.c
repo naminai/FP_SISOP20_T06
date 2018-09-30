@@ -27,6 +27,9 @@ uint nextpid = 1;
 extern void forkret(void);
 extern void trapret(void);
 static void wakeup1(void* chan);
+#ifdef CS333_P1
+static void displayheaders(void);
+#endif // CS333_P1
 
 void
 pinit(void)
@@ -525,7 +528,6 @@ kill(int pid)
 // Runs when user types ^P on console.
 // No lock to avoid wedging a stuck machine further.
 
-/*
 #ifdef CS333_P1
 void
 displayheaders(void)
@@ -533,34 +535,6 @@ displayheaders(void)
   cprintf("\nPID\tName\tElapsed\tState\tSize\tPCs\n");
 }
 #endif // CS333_P1
-
-#ifdef CS333_P1
-void
-elapsedtime(void)
-{
-  int elapsed;
-  int milliseconds;
-
-  struct proc *p;
-  char *state;
-  int size;
-  uint pc[10];
-
-  elapsed = ticks - p->start_ticks;
-  milliseconds = elapsed % 1000;
-  elapsed = elapsed/1000;
-
-  cprintf("%d\t%s\t%d.\t%s\t%d\t%d", p->pid, p->name, elapsed, state, size, pc);
-
-  if (milliseconds < 10)
-    cprintf("00");
-  else if (milliseconds < 100 && milliseconds >= 10)
-    cprintf("0");
-
-  cprintf("%d\t", milliseconds, "\n");
-}
-#endif // CS333_P1
-*/
 
 void
 procdump(void)
@@ -571,7 +545,7 @@ procdump(void)
   uint pc[10];
 
   #ifdef CS333_P1
-  cprintf("\nPID\tName\tElapsed\tState\tSize\tPCs\n");
+  displayheaders();
   #endif // CS333_P1
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
@@ -583,19 +557,17 @@ procdump(void)
       state = "???";
 
     #ifdef CS333_P1
-    int elapsed;
-    int milliseconds;
     int size = p->sz;
+    int elapsed = ticks - p->start_ticks;
+    int milliseconds;
 
-    elapsed = ticks - p->start_ticks;
     milliseconds = elapsed % 1000;
-    elapsed = elapsed/1000;
-    /*
     if (milliseconds < 10)
-      cprintf("00");
+      milliseconds *= 100;
     else if (milliseconds < 100 && milliseconds >= 10)
-      cprintf("0");
-    */
+      milliseconds *= 10;
+    elapsed = elapsed/1000;
+
     cprintf("%d\t%s\t%d.%d\t%s\t%d\t%p", p->pid, p->name, elapsed, milliseconds, state, size, pc);
 
     #else
