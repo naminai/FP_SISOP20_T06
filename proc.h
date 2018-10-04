@@ -50,8 +50,12 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
   #ifdef CS333_P1
-  uint start_ticks;            // To calculate how long a process has been active
+  uint start_ticks;            // Ticks (milliseconds) represent start of process
   #endif // CS333_P1
+  #ifdef CS333_P2
+  uint uid;                    // Process user id
+  uint gid;                    // Process group id
+  #endif
 };
 
 // Process memory is laid out contiguously, low addresses first:
