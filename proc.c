@@ -164,6 +164,10 @@ userinit(void)
   // because the assignment might not be atomic.
   acquire(&ptable.lock);
   p->state = RUNNABLE;
+  #ifdef CS333_P2
+  p->uid = DEFUID;
+  p->uid = DEFGID;
+  #endif // CS333_P2
   release(&ptable.lock);
 }
 
@@ -214,6 +218,11 @@ fork(void)
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
+
+  #ifdef CS333_P2
+  np->uid = proc->uid;
+  np->gid = proc->gid;
+  #endif // CS333_P2
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
