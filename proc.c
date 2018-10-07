@@ -218,10 +218,9 @@ fork(void)
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
-
   #ifdef CS333_P2
-  np->uid = proc->uid;
-  np->gid = proc->gid;
+  np->uid = curproc->uid;
+  np->gid = curproc->gid;
   #endif // CS333_P2
 
   // Clear %eax so that fork returns 0 in the child.
