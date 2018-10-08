@@ -84,3 +84,7 @@ pdx-kernel.h
 halt.c
 date.h
 date.c
+
+# Files added by Carissa Allen
+ps.c
+time.c

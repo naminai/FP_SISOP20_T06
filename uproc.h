@@ -1,15 +1,16 @@
 #define STRMAX 32
 
+// The uproc struct contains limited fields from the proc struct to be used with 'ps' command
 struct uproc {
-  uint pid;
-  uint uid;
-  uint gid;
-  uint ppid;
+  uint pid;               // Process ID
+  uint uid;               // Process User ID
+  uint gid;               // Process Group ID
+  uint ppid;              // Parent process' ID
   uint priority;
-  uint elapsed_ticks;
-  uint CPU_total_ticks;
-  char state[STRMAX];
-  uint size;
-  char name[STRMAX];
+  uint elapsed_ticks;     // Time since process started
+  uint CPU_total_ticks;   // Total elapsed ticks in CPU
+  char state[STRMAX];     // Process state
+  uint size;              // Size of process memory (bytes)
+  char name[STRMAX];      // Process name
 };
 

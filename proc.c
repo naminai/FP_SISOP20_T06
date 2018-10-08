@@ -6,6 +6,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "uproc.h"
 
 static char *states[] = {
 [UNUSED]    "unused",
@@ -28,8 +29,12 @@ extern void forkret(void);
 extern void trapret(void);
 static void wakeup1(void* chan);
 #ifdef CS333_P1
-static void procdumpP1(struct proc *p, char *state);
+extern void procdumpP1(struct proc* p, char* state);
 #endif // CS 333_P1
+#ifdef CS333_P2
+static void procdumpP2(struct proc* p, char* state);
+static void padmilliseconds(int milliseconds);
+#endif // CS 333_P2
 
 void
 pinit(void)
@@ -127,7 +132,10 @@ allocproc(void)
   #ifdef CS333_P1
   p->start_ticks = ticks;
   #endif // CS333_P1
-
+  #ifdef CS333_P2
+  p->cpu_ticks_total = 0;
+  p->cpu_ticks_in = 0;
+  #endif // CS333_P2
   return p;
 }
 
@@ -164,6 +172,10 @@ userinit(void)
   // because the assignment might not be atomic.
   acquire(&ptable.lock);
   p->state = RUNNABLE;
+  #ifdef CS333_P2
+  p->uid = DEFUID;
+  p->uid = DEFGID;
+  #endif // CS333_P2
   release(&ptable.lock);
 }
 
@@ -214,6 +226,10 @@ fork(void)
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
+  #ifdef CS333_P2
+  np->uid = curproc->uid;
+  np->gid = curproc->gid;
+  #endif // CS333_P2
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -365,6 +381,9 @@ scheduler(void)
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
+#ifdef CS333_P2
+      p->cpu_ticks_in = ticks;
+#endif // CS333_P2
       swtch(&(c->scheduler), p->context);
       switchkvm();
 
@@ -405,6 +424,9 @@ sched(void)
   if(readeflags()&FL_IF)
     panic("sched interruptible");
   intena = mycpu()->intena;
+  #ifdef CS333_P2
+  p->cpu_ticks_total += ticks - p->cpu_ticks_in;
+  #endif // CS333_P2
   swtch(&p->context, mycpu()->scheduler);
   mycpu()->intena = intena;
 }
@@ -529,7 +551,7 @@ kill(int pid)
 // No lock to avoid wedging a stuck machine further.
 #ifdef CS333_P1
 void
-procdumpP1(struct proc *p, char *state)
+procdumpP1(struct proc* p, char* state)
 {
   int milliseconds;
   int elapsed;
@@ -540,14 +562,62 @@ procdumpP1(struct proc *p, char *state)
 
   cprintf("%d\t%s\t%d.", p->pid, p->name, elapsed);
 
-  if (milliseconds < 100 && milliseconds >= 10)
+  if(milliseconds < 100 && milliseconds >= 10)
     cprintf("00");
-  if (milliseconds < 10)
+  if(milliseconds < 10)
     cprintf("0");
 
   cprintf("%d\t%s\t%d\t%p", milliseconds, state, p->sz);
 }
 #endif // CS333_P1
+
+#ifdef CS333_P2
+void
+padmilliseconds(int milliseconds)
+{
+  if(milliseconds == 0)
+    cprintf("000");
+  if(milliseconds < 10 && milliseconds > 0)
+    cprintf("00");
+  if(milliseconds < 100 && milliseconds >= 10)
+    cprintf("0");
+}
+
+void
+procdumpP2(struct proc* p, char* state)
+{
+  int milliseconds;
+  int elapsed;
+  int ppid;
+  int cpu_milliseconds;
+  int cpu;
+
+  // If parent pointer is NULL, set to PID
+  if(p->parent)
+    ppid = p->parent->pid;
+  else
+    ppid = p->pid;
+  cprintf("%d\t%s\t", p->pid, p->name);
+  // Adjust column width for longer names
+  if(strlen(p->name) > 7)
+    cprintf("\t");
+  // Calculate elapsed process time
+  elapsed = ticks - p->start_ticks;
+  milliseconds = elapsed % 1000;
+  elapsed = elapsed/1000;
+  // Print
+  cprintf("%d\t%d\t%d\t%d.", p->uid, p->gid, ppid, elapsed);
+  padmilliseconds(milliseconds);
+  // Calculate CPU time
+  cpu = p->cpu_ticks_total;
+  cpu_milliseconds = cpu % 1000;
+  cpu = cpu/1000;
+  // Print
+  cprintf("%d\t%d.\t", milliseconds, cpu);
+  padmilliseconds(cpu_milliseconds);
+  cprintf("%d\t%s\t%d\t%p", cpu_milliseconds, state, p->sz);
+}
+#endif // CS333_P2
 
 void
 procdump(void)
@@ -580,7 +650,7 @@ procdump(void)
 #if defined(CS333_P4)
   //procdumpP4(p, state);
 #elif defined(CS333_P2)
-  //procdumpP2(p, state);
+  procdumpP2(p, state);
 #elif defined(CS333_P1)
   procdumpP1(p, state);
 #else
@@ -595,3 +665,35 @@ procdump(void)
     cprintf("\n");
   }
 }
+
+#ifdef CS333_P2
+int
+getprocs(uint max, struct uproc* table)
+{
+  int count = 0;
+  struct proc* p = ptable.proc;
+
+  acquire(&ptable.lock);
+  while(p < &ptable.proc[NPROC] && count < max) {
+    if(p-> state != UNUSED && p->state != EMBRYO) {
+      table->pid = p->pid;
+      table->uid = p->uid;
+      table->gid = p->gid;
+      ++count;
+      if(p->parent)
+        table->ppid = p->parent->pid;
+      else
+        table->ppid = p->pid;
+      table->elapsed_ticks = (ticks - p->start_ticks);
+      table->CPU_total_ticks = p->cpu_ticks_total;
+      safestrcpy(table->state, states[p->state], STRMAX);
+      table->size = p->sz;
+      safestrcpy(table->name, p->name, STRMAX);
+      ++table;
+    }
+    ++p;
+  }
+  release(&ptable.lock);
+  return count;
+}
+#endif // CS333_P2
