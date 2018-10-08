@@ -613,7 +613,7 @@ procdumpP2(struct proc* p, char* state)
   cpu_milliseconds = cpu % 1000;
   cpu = cpu/1000;
   // Print
-  cprintf("%d\t%d.\t", milliseconds, cpu);
+  cprintf("%d\t%d.", milliseconds, cpu);
   padmilliseconds(cpu_milliseconds);
   cprintf("%d\t%s\t%d\t%p", cpu_milliseconds, state, p->sz);
 }
