@@ -29,11 +29,11 @@ extern void forkret(void);
 extern void trapret(void);
 static void wakeup1(void* chan);
 #ifdef CS333_P1
+extern void padmilliseconds(int milliseconds);
 extern void procdumpP1(struct proc* p, char* state);
 #endif // CS 333_P1
 #ifdef CS333_P2
 static void procdumpP2(struct proc* p, char* state);
-static void padmilliseconds(int milliseconds);
 #endif // CS 333_P2
 
 void
@@ -551,6 +551,17 @@ kill(int pid)
 // No lock to avoid wedging a stuck machine further.
 #ifdef CS333_P1
 void
+padmilliseconds(int milliseconds)
+{
+  if(milliseconds == 0)
+    cprintf("000");
+  if(milliseconds < 10 && milliseconds > 0)
+    cprintf("00");
+  if(milliseconds < 100 && milliseconds >= 10)
+    cprintf("0");
+}
+
+void
 procdumpP1(struct proc* p, char* state)
 {
   int milliseconds;
@@ -572,17 +583,6 @@ procdumpP1(struct proc* p, char* state)
 #endif // CS333_P1
 
 #ifdef CS333_P2
-void
-padmilliseconds(int milliseconds)
-{
-  if(milliseconds == 0)
-    cprintf("000");
-  if(milliseconds < 10 && milliseconds > 0)
-    cprintf("00");
-  if(milliseconds < 100 && milliseconds >= 10)
-    cprintf("0");
-}
-
 void
 procdumpP2(struct proc* p, char* state)
 {
@@ -667,6 +667,24 @@ procdump(void)
 }
 
 #ifdef CS333_P2
+int
+setuid(int*  uid)
+{
+  acquire(&ptable.lock);
+  myproc()->uid = * uid;
+  release(&ptable.lock);
+  return 0;
+}
+
+int
+setgid(int* gid)
+{
+  acquire(&ptable.lock);
+  myproc()->gid = * gid;
+  release(&ptable.lock);
+  return 0;
+}
+
 int
 getprocs(uint max, struct uproc* table)
 {

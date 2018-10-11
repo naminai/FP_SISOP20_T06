@@ -13,4 +13,3 @@ struct uproc {
   uint size;              // Size of process memory (bytes)
   char name[STRMAX];      // Process name
 };
-

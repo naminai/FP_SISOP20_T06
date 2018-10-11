@@ -3,6 +3,7 @@
 #include "user.h"
 
 static void padmilliseconds(int);
+static void processtime(int);
 
 void
 padmilliseconds(int milliseconds)
@@ -15,14 +16,21 @@ padmilliseconds(int milliseconds)
     printf(1, "0");
 }
 
+void
+processtime(int runtime)
+{
+  int ms = runtime % 1000;
+  runtime = runtime/1000;
+  printf(1, "%d.", runtime);
+  padmilliseconds(ms);
+  printf(1, "%d seconds.\n", ms);
+}
+
 int
 main(int argc, char* argv[])
 {
   int start;
   int pid;
-  int runtime;
-  int ms;
-
   start = uptime();
   pid = fork();
 
@@ -31,18 +39,16 @@ main(int argc, char* argv[])
     exit();
   }
   else if (pid == 0) {
+    if(argc < 3)
+      exit();
     exec(argv[1], &argv[1]);
     exit();
   }
   else {
     wait();
     printf(1, "%s ran in ", argv[1]);
-    runtime = uptime() - start;
-    ms = runtime % 1000;
-    runtime = runtime/1000;
-    printf(1, "%d.", runtime);
-    padmilliseconds(ms);
-    printf(1, "%d seconds.\n", ms);
+    int runtime = uptime() - start;
+    processtime(runtime);
   }
   exit();
 }
