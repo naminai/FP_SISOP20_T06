@@ -8,8 +8,6 @@ static void processtime(int);
 void
 padmilliseconds(int milliseconds)
 {
-  if(milliseconds == 0)
-    printf(1, "000");
   if(milliseconds < 10 && milliseconds > 0)
     printf(1, "00");
   if(milliseconds < 100 && milliseconds >= 10)
@@ -37,14 +35,12 @@ main(int argc, char* argv[])
   if(pid < 0) {
     printf(2, "Error relating to fork() call\n");
     exit();
-  }
-  else if (pid == 0) {
-    if(argc < 3)
+  } else if (pid == 0) {
+    if(argc < 2)
       exit();
     exec(argv[1], &argv[1]);
     exit();
-  }
-  else {
+  } else {
     wait();
     printf(1, "%s ran in ", argv[1]);
     int runtime = uptime() - start;
