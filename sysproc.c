@@ -132,7 +132,7 @@ sys_getgid(void)
 uint
 sys_getppid(void)
 {
-  if (!myproc()->parent)
+  if(!myproc()->parent)
     return myproc()->pid;
   return myproc()->parent->pid;
 }
@@ -141,12 +141,12 @@ int
 sys_setuid(void)
 {
   int uid;
+  if(argint(0, &uid) < 0)
+    return -1;
+  if(uid < 0 || uid > 32767)
+    return -1;
 
-  if (argint(0, &uid) < 0)
-    return -1;
-  if (uid < 0 || uid > 32767)
-    return -1;
-  myproc()->uid = uid;
+  setuid(&uid);
   return 0;
 }
 
@@ -154,12 +154,12 @@ int
 sys_setgid(void)
 {
   int gid;
+  if(argint(0, &gid) < 0)
+    return -1;
+  if(gid < 0 || gid > 32767)
+    return -1;
 
-  if (argint(0, &gid) < 0)
-    return -1;
-  if (gid < 0 || gid > 32767)
-    return -1;
-  myproc()->gid = gid;
+  setgid(&gid);
   return 0;
 }
 
@@ -169,9 +169,9 @@ sys_getprocs(void)
   int max;
   struct uproc* table;
 
-  if (argint(0, &max) < 0)
+  if(argint(0, &max) < 0)
     return -1;
-  if (argptr(1, (void*) &table, sizeof(struct uproc) * max) < 0)
+  if(argptr(1, (void*) &table, sizeof(struct uproc) * max) < 0)
     return -1;
   return getprocs(max,table);
 }

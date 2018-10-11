@@ -125,6 +125,8 @@ int             wait(void);
 void            wakeup(void*);
 void            yield(void);
 #ifdef CS333_P2
+int             setuid(int*);
+int             setgid(int*);
 int             getprocs(uint, struct uproc*);
 #endif
 
