@@ -8,9 +8,7 @@ static void padmilliseconds(int);
 void
 padmilliseconds(int milliseconds)
 {
-  if(milliseconds == 0)
-    printf(1, "000");
-  else if(milliseconds < 10 && milliseconds > 0)
+  if(milliseconds < 10 && milliseconds > 0)
     printf(1, "00");
   else if(milliseconds < 100 && milliseconds >= 10)
     printf(1, "0");
