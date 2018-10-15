@@ -3,7 +3,10 @@
 #include "user.h"
 #include "uproc.h"
 
+#define HEADER "\nPID\tName\tUID\tGID\tPPID\tElapsed\tCPU\tState\tSize\n"
+
 static void padmilliseconds(int);
+static void ps();
 
 void
 padmilliseconds(int milliseconds)
@@ -16,8 +19,8 @@ padmilliseconds(int milliseconds)
     return;
 }
 
-int
-main(void)
+void
+ps()
 {
   uint max = 32;
   struct uproc* table = malloc(sizeof(struct uproc) * max);
@@ -30,7 +33,7 @@ main(void)
   if(count < 0) {
     printf(2, "\nFailure: an error occurred while creating the user process table.\n");
   } else {
-    printf(1, "\nPID\tName\tUID\tGID\tPPID\tElapsed\tCPU\tState\tSize\n");
+    printf(1, HEADER);
 
     for(int i = 0; i < count; ++i) {
       // Calculate process time
@@ -44,8 +47,6 @@ main(void)
 
       // Print pid, name
       printf(1, "%d\t%s\t", table[i].pid, table[i].name);
-      if(strlen(table[i].name) > 7)
-        printf(1, "\t");
       // Print uid, gid, ppid, elapsed (seconds)
       printf(1, "%d\t%d\t%d\t%d.", table[i].uid, table[i].gid, table[i].ppid, elapsed);
       padmilliseconds(milliseconds);
@@ -57,6 +58,12 @@ main(void)
     }
   }
   free(table);
+}
+
+int
+main(int argc, char* argv[])
+{
+    ps();
   exit();
 }
 #endif // CS333_P2
