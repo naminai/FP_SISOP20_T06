@@ -4,6 +4,7 @@
 
 static void padmilliseconds(int);
 static void processtime(int);
+static void time(int argc, char* argv[]);
 
 void
 padmilliseconds(int milliseconds)
@@ -24,8 +25,8 @@ processtime(int runtime)
   printf(1, "%d seconds.\n", ms);
 }
 
-int
-main(int argc, char* argv[])
+void
+time(int argc, char* argv[])
 {
   int start;
   int pid;
@@ -33,19 +34,29 @@ main(int argc, char* argv[])
   pid = fork();
 
   if(pid < 0) {
-    printf(2, "Error relating to fork() call\n");
+    printf(2, "Fork system call failed. Exiting...\n");
     exit();
+  // child process
   } else if (pid == 0) {
-    if(argc < 2)
+      if(argc < 2) {
+       exit();
+    } else {
+      exec(argv[1], &argv[1]);
       exit();
-    exec(argv[1], &argv[1]);
-    exit();
+    }
+  // parent process
   } else {
     wait();
     printf(1, "%s ran in ", argv[1]);
     int runtime = uptime() - start;
     processtime(runtime);
   }
+}
+
+int
+main(int argc, char* argv[])
+{
+  time(argc, argv);
   exit();
 }
 #endif // CS333_P2
