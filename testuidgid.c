@@ -55,7 +55,7 @@ forkTest(uint nval)
     exit();
   }
   else
-    sleep(10 * TPS); // wait for child to exit before proceeding
+    wait(); // wait for child to exit before proceeding
 
 }
 
