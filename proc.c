@@ -553,8 +553,6 @@ kill(int pid)
 void
 padmilliseconds(int milliseconds)
 {
-  if(milliseconds == 0)
-    cprintf("000");
   if(milliseconds < 10 && milliseconds > 0)
     cprintf("00");
   if(milliseconds < 100 && milliseconds >= 10)

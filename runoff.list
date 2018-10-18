@@ -88,3 +88,8 @@ date.c
 # Files added by Carissa Allen
 ps.c
 time.c
+uproc.h
+testuidgid.c
+testuidgid_mod.c
+testsetuid.c
+p2-test.c
