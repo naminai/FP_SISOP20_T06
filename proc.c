@@ -28,13 +28,13 @@ uint nextpid = 1;
 extern void forkret(void);
 extern void trapret(void);
 static void wakeup1(void* chan);
+#ifdef CS333_P2
+static void procdumpP2(struct proc* p, char* state);
+#endif // CS 333_P2
 #ifdef CS333_P1
 extern void padmilliseconds(int milliseconds);
 extern void procdumpP1(struct proc* p, char* state);
 #endif // CS 333_P1
-#ifdef CS333_P2
-static void procdumpP2(struct proc* p, char* state);
-#endif // CS 333_P2
 
 void
 pinit(void)
