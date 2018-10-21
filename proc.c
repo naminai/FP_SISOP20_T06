@@ -384,17 +384,29 @@ userinit(void)
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
 
+  #ifdef CS333_P3
+  // EMBRYO to RUNNABLE state transition
+  acquire(&ptable.lock);
+  int rc = stateListRemove(&ptable.list[EMBRYO], p);
+  if(rc < 0)
+    panic("Error: failed to remove from embryo list in allocproc()\n");
+  assertState(p, EMBRYO);
+  p->state = RUNNABLE;
+  stateListAdd(&ptable.list[RUNNABLE], p);
+  release(&ptable.lock);
+  #else
   // this assignment to p->state lets other cores
   // run this process. the acquire forces the above
   // writes to be visible, and the lock is also needed
   // because the assignment might not be atomic.
   acquire(&ptable.lock);
   p->state = RUNNABLE;
+  release(&ptable.lock);
+  #endif
   #ifdef CS333_P2
   p->uid = DEFUID;
   p->uid = DEFGID;
   #endif // CS333_P2
-  release(&ptable.lock);
 }
 
 // Grow current process's memory by n bytes.
