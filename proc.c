@@ -254,8 +254,9 @@ allocproc(void)
     acquire(&ptable.lock);
     // rc is the return code that indicates success or failure
     int rc = stateListRemove(&ptable.list[EMBRYO], p);
-    if(rc < 0)
+    if(rc < 0) {
       panic("Error: failed to remove from embryo list in allocproc()\n");
+    }
     assertState(p, EMBRYO);
     p->state = UNUSED;
     stateListAdd(&ptable.list[UNUSED], p);
@@ -349,8 +350,7 @@ allocproc(void)
 
 //PAGEBREAK: 32
 // Set up first user process.
-void
-userinit(void)
+void userinit(void)
 {
   struct proc *p;
   extern char _binary_initcode_start[], _binary_initcode_size[];
@@ -388,8 +388,9 @@ userinit(void)
   // EMBRYO to RUNNABLE state transition
   acquire(&ptable.lock);
   int rc = stateListRemove(&ptable.list[EMBRYO], p);
-  if(rc < 0)
+  if(rc < 0) {
     panic("Error: failed to remove from embryo list in allocproc()\n");
+  }
   assertState(p, EMBRYO);
   p->state = RUNNABLE;
   stateListAdd(&ptable.list[RUNNABLE], p);
@@ -953,7 +954,7 @@ sleep(void *chan, struct spinlock *lk)
 }
 #endif
 
-#ifdef CS333_P3
+#ifndef CS333_P3
 //PAGEBREAK!
 // Wake up all processes sleeping on chan.
 // The ptable lock must be held.
@@ -961,11 +962,23 @@ static void
 wakeup1(void *chan)
 {
   /* modified version of wakeup1() */
+  acquire(&ptable.lock);
   struct proc *p;
+  p = ptable.list[SLEEPING].head;
 
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    if(p->state == SLEEPING && p->chan == chan)
+  while(p) {
+    if(p->chan == chan) {
+      int rc = stateListRemove(&ptable.list[SLEEPING], p);
+      if(rc < 0) {
+        panic("Error: failed to remove process from SLEEPING state list in wakeup1()\n");
+      }
+      assertState(p, SLEEPING);
       p->state = RUNNABLE;
+      stateListAdd(&ptable.list[RUNNABLE], p);
+    }
+    p = p->next;
+  }
+  release(&ptable.lock);
 }
 
 #else
