@@ -1129,6 +1129,26 @@ procdumpP2(struct proc* p, char* state)
 }
 #endif // CS333_P2
 
+#ifdef CS333_P3
+void
+freedump(void)
+{
+  struct proc* p;
+  int free_list = 0;
+
+  acquire(&ptable.lock);
+  p = ptable.list[UNUSED].head;
+
+  while(p) {
+    ++free_list;
+    p = p->next;
+  }
+
+  cprintf("Free List Size: %d processes\n", free_list);
+  release(&ptable.lock);
+}
+#endif // CS333_P3
+
 void
 procdump(void)
 {
