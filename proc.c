@@ -47,8 +47,10 @@ static void wakeup1(void* chan);
 // List management function prototypes
 static void initProcessLists(void);
 static void initFreeList(void);
-static void stateListAdd(struct ptrs*, struct proc* p);
-static int stateListRemove(struct ptrs*, struct proc* p);
+static void stateListAdd(struct ptrs* list, struct proc* p);
+static int stateListRemove(struct ptrs* list, struct proc* p);
+// Assert state function prototype
+static void assertState(struct proc* p, enum procstate state);
 #endif // CS333_P3
 #ifdef CS333_P2
 static void procdumpP2(struct proc* p, char* state);
@@ -197,6 +199,96 @@ myproc(void) {
   return p;
 }
 
+#ifdef CS333_P3
+// Invokes kernel panic if state check fails; check should be performed
+// after a process is removed from a list, and before the process is added to another list
+static void
+assertState(struct proc* p, enum procstate state)
+{
+  if(p->state != state) {
+    cprintf("Failure: p->state is %s and p->state should be %s", states[p->state], states[state]);
+    panic("Kernel panic\n");
+  }
+}
+#endif // CS333_P3
+
+#ifdef CS333_P3
+//PAGEBREAK: 32
+// Look in the process table for an UNUSED proc.
+// If found, change state to EMBRYO and initialize
+// state required to run in the kernel.
+// Otherwise return 0.
+static struct proc*
+allocproc(void)
+{
+  /* modified version of allocproc() */
+  struct proc *p;
+  char *sp;
+  int found = 0;
+
+  acquire(&ptable.lock);
+
+  if(ptable.list[UNUSED].head) {
+    p = ptable.list[UNUSED].head;
+    found = 1;
+  }
+
+  if(found) {
+    if(stateListRemove(&ptable.list[UNUSED], p) < 0) {
+      panic("Error: failed to remove state from free list in allocproc()\n");
+    } else {
+      assertState(p, UNUSED);
+      p->state = EMBRYO;
+      stateListAdd(&ptable.list[EMBRYO], p);
+      p->pid = nextpid++;
+      release(&ptable.lock);
+    }
+  }
+  if(!found) {
+    release(&ptable.lock);
+    return 0;
+  }
+
+  // Allocate kernel stack.
+  if((p->kstack = kalloc()) == 0) {
+    acquire(&ptable.lock);
+    // rc is the return code that indicates success or failure
+    int rc = stateListRemove(&ptable.list[EMBRYO], p);
+    if(rc < 0)
+      panic("Error: failed to remove from embryo list in allocproc()\n");
+    assertState(p, EMBRYO);
+    p->state = UNUSED;
+    stateListAdd(&ptable.list[UNUSED], p);
+    release(&ptable.lock);
+    return 0;
+  }
+  sp = p->kstack + KSTACKSIZE;
+
+  // Leave room for trap frame.
+  sp -= sizeof *p->tf;
+  p->tf = (struct trapframe*)sp;
+
+  // Set up new context to start executing at forkret,
+  // which returns to trapret.
+  sp -= 4;
+  *(uint*)sp = (uint)trapret;
+
+  sp -= sizeof *p->context;
+  p->context = (struct context*)sp;
+  memset(p->context, 0, sizeof *p->context);
+  p->context->eip = (uint)forkret;
+
+  #ifdef CS333_P1
+  p->start_ticks = ticks;
+  #endif // CS333_P1
+  #ifdef CS333_P2
+  p->cpu_ticks_total = 0;
+  p->cpu_ticks_in = 0;
+  #endif // CS333_P2
+  return p;
+}
+
+#else
 //PAGEBREAK: 32
 // Look in the process table for an UNUSED proc.
 // If found, change state to EMBRYO and initialize
@@ -253,6 +345,7 @@ allocproc(void)
   #endif // CS333_P2
   return p;
 }
+#endif
 
 //PAGEBREAK: 32
 // Set up first user process.
@@ -262,6 +355,16 @@ userinit(void)
   struct proc *p;
   extern char _binary_initcode_start[], _binary_initcode_size[];
 
+  #ifdef CS333_P3
+  // Initialize lists; since the new lists are part of the oncurrent data structure ptable,
+  // proper concurrency control must be used (ptable lock acquired and released correctly)
+  acquire(&ptable.lock);
+  initProcessLists();
+  initFreeList();
+  release(&ptable.lock);
+  #endif
+
+  // Routine calls allocproc() which is where a process will be removed from the free list and allocated
   p = allocproc();
 
   initproc = p;
