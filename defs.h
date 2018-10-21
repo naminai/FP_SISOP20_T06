@@ -126,6 +126,9 @@ void            wakeup(void*);
 void            yield(void);
 #ifdef CS333_P3
 void            freedump(void);
+void            readydump(void);
+void            sleepdump(void);
+void            zombiedump(void);
 #endif // CS333_P3
 #ifdef CS333_P2
 int             setuid(int*);

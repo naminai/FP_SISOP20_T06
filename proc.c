@@ -1130,6 +1130,7 @@ procdumpP2(struct proc* p, char* state)
 #endif // CS333_P2
 
 #ifdef CS333_P3
+// Control-f: prints the number of processes on the free list
 void
 freedump(void)
 {
@@ -1145,6 +1146,74 @@ freedump(void)
   }
 
   cprintf("Free List Size: %d processes\n", free_list);
+  release(&ptable.lock);
+}
+
+// Control-r: prints the PIDs of all processes on the ready list
+void
+readydump(void)
+{
+  struct proc* p;
+  acquire(&ptable.lock);
+  p = ptable.list[RUNNABLE].head;
+
+  cprintf("Ready List Processes: \n");
+
+  while(p) {
+    cprintf("%d ", p->pid);
+    if(p->next)
+      cprintf("-> ");
+    p = p->next;
+  }
+
+  cprintf("\n");
+  release(&ptable.lock);
+}
+
+// Control-s: prints the PIDs of all processes on the sleep list
+void
+sleepdump(void)
+{
+  struct proc* p;
+  acquire(&ptable.lock);
+  p = ptable.list[SLEEPING].head;
+
+  cprintf("Sleep List Processes: \n");
+
+  while(p) {
+    cprintf("%d ", p->pid);
+    if(p->next)
+      cprintf("-> ");
+    p = p->next;
+  }
+
+  cprintf("\n");
+  release(&ptable.lock);
+}
+
+// Control-z: prints the PIDs of all processes on the zombie list + their parent PID
+void
+zombiedump(void)
+{
+  struct proc* p;
+  int ppid = 0;
+  acquire(&ptable.lock);
+  p = ptable.list[ZOMBIE].head;
+
+  cprintf("Zombie List Processes: \n");
+
+  while(p) {
+    if(p->parent)
+      ppid = p->parent->pid;
+    else
+      ppid = p->pid;
+    cprintf("(%d, %d) ", p->pid, ppid);
+    if(p->next)
+      cprintf("-> ");
+    p = p->next;
+  }
+
+  cprintf("\n");
   release(&ptable.lock);
 }
 #endif // CS333_P3
