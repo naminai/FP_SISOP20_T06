@@ -49,15 +49,18 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
-  #ifdef CS333_P1
-  uint start_ticks;            // Ticks (milliseconds) represent start of process
-  #endif // CS333_P1
+  #ifdef CS333_P3
+  struct proc* next;           // Pointer to the next item in each list, and each list
+  #endif // CS333_P3           // corresponds to a state of the xv6 state transition model
   #ifdef CS333_P2
   uint uid;                    // Process user id
   uint gid;                    // Process group id
   uint cpu_ticks_total;        // Total elapsed ticks in CPU
   uint cpu_ticks_in;           // Ticks when scheduled
-  #endif
+  #endif // CS333_P2
+  #ifdef CS333_P1
+  uint start_ticks;            // Ticks (milliseconds) represent start of process
+  #endif // CS333_P1
 };
 
 // Process memory is laid out contiguously, low addresses first:
