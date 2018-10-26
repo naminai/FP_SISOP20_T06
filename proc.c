@@ -1109,8 +1109,8 @@ procdumpP2(struct proc* p, char* state)
     ppid = p->pid;
   cprintf("%d\t%s\t", p->pid, p->name);
   // Adjust column width for longer names
-  if(strlen(p->name) > 7)
-    cprintf("\t");
+  // if(strlen(p->name) > 7)
+  // cprintf("\t");
   // Calculate elapsed process time
   elapsed = ticks - p->start_ticks;
   milliseconds = elapsed % 1000;
@@ -1228,6 +1228,8 @@ procdump(void)
 
 #if defined(CS333_P4)
 #define HEADER "\nPID\tName\tUID\tGID\tPPID\tPrio\tElapsed\tCPU\tState\tSize\tPCs\n"
+#elif defined(CS333_P3)
+#define HEADER "\nPID\tName\t\tUID\tGID\tPPID\tElapsed\tCPU\tState\tSize\tPCs\n"
 #elif defined(CS333_P2)
 #define HEADER "\nPID\tName\tUID\tGID\tPPID\tElapsed\tCPU\tState\tSize\tPCs\n"
 #elif defined(CS333_P1)
