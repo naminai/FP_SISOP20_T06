@@ -192,6 +192,12 @@ void
 consoleintr(int (*getc)(void))
 {
   int c, doprocdump = 0;
+  #ifdef CS333_P3
+  int dofreedump = 0;
+  int doreadydump = 0;
+  int dosleepdump = 0;
+  int dozombiedump = 0;
+  #endif // CS333_P3
 
   acquire(&cons.lock);
   while((c = getc()) >= 0){
@@ -200,6 +206,20 @@ consoleintr(int (*getc)(void))
       // procdump() locks cons.lock indirectly; invoke later
       doprocdump = 1;
       break;
+    #ifdef CS333_P3
+    case C('F'):  // Total number of free processes.
+      dofreedump = 1;
+      break;
+    case C('R'):  // Ready process listing.
+      doreadydump = 1;
+      break;
+    case C('S'):  // Sleeping process listing.
+      dosleepdump = 1;
+      break;
+    case C('Z'):  // Zombie process listing.
+      dozombiedump = 1;
+      break;
+    #endif
     case C('U'):  // Kill line.
       while(input.e != input.w &&
             input.buf[(input.e-1) % INPUT_BUF] != '\n'){
@@ -230,6 +250,20 @@ consoleintr(int (*getc)(void))
   if(doprocdump) {
     procdump();  // now call procdump() wo. cons.lock held
   }
+  #ifdef CS333_P3
+  if(dofreedump) {
+    freedump();
+  }
+  if(doreadydump) {
+    readydump();
+  }
+  if(dosleepdump) {
+    sleepdump();
+  }
+  if(dozombiedump) {
+    zombiedump();
+  }
+  #endif // CS333_P3
 }
 
 int
