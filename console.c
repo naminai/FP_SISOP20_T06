@@ -250,6 +250,7 @@ consoleintr(int (*getc)(void))
   if(doprocdump) {
     procdump();  // now call procdump() wo. cons.lock held
   }
+  #ifdef CS333_P3
   if(dofreedump) {
     freedump();
   }
@@ -262,6 +263,7 @@ consoleintr(int (*getc)(void))
   if(dozombiedump) {
     zombiedump();
   }
+  #endif // CS333_P3
 }
 
 int
