@@ -32,9 +32,13 @@ struct ptrs {
 static struct {
   struct spinlock lock;
   struct proc proc[NPROC];
-#ifdef CS333_P3
+  #ifdef CS333_P3
   struct ptrs list[statecount];
-#endif // CS333_P3
+  #endif // CS333_P3
+  #ifdef CS333_P4
+  struct ptrs ready[MAXPRIO+1};
+  uint PromoteAtTime;
+  #endif // CS333_P4
 } ptable;
 
 static struct proc *initproc;
@@ -43,6 +47,9 @@ uint nextpid = 1;
 extern void forkret(void);
 extern void trapret(void);
 static void wakeup1(void* chan);
+#ifdef CS333_P4
+static void procdumpP4(struct proc* p, char* state);
+#endif // CS333_P4
 #ifdef CS333_P3
 // List management function prototypes
 static void initProcessLists(void);
@@ -52,10 +59,10 @@ static int stateListRemove(struct ptrs* list, struct proc* p);
 // Assert state function prototype
 static void assertState(struct proc* p, enum procstate state);
 // Helper functions
-static void printcmd(struct proc *p);
+static void printcmd(struct proc* p);
 #endif // CS333_P3
 #ifdef CS333_P2
-static void procdumpP2(struct proc* p, char* state);
+extern void procdumpP2(struct proc* p, char* state);
 #endif // CS 333_P2
 #ifdef CS333_P1
 extern void padmilliseconds(int milliseconds);
@@ -1247,6 +1254,43 @@ procdumpP2(struct proc* p, char* state)
 }
 #endif // CS333_P2
 
+#ifdef CS333_P4
+void
+procdumpP4(struct proc* p, char* state)
+{
+  int milliseconds;
+  int elapsed;
+  int ppid;
+  int cpu_milliseconds;
+  int cpu;
+
+  // If parent pointer is NULL, set to PID
+  if(p->parent)
+    ppid = p->parent->pid;
+  else
+    ppid = p->pid;
+  cprintf("%d\t%s\t", p->pid, p->name);
+  // Adjust column width for longer names
+  // if(strlen(p->name) > 7)
+  // cprintf("\t");
+  // Calculate elapsed process time
+  elapsed = ticks - p->start_ticks;
+  milliseconds = elapsed % 1000;
+  elapsed = elapsed/1000;
+  // Print
+  cprintf("%d\t%d\t%d\t%d.", p->uid, p->gid, ppid, elapsed);
+  padmilliseconds(milliseconds);
+  // Calculate CPU time
+  cpu = p->cpu_ticks_total;
+  cpu_milliseconds = cpu % 1000;
+  cpu = cpu/1000;
+  // Print
+  cprintf("%d\t%d.", milliseconds, cpu);
+  padmilliseconds(cpu_milliseconds);
+  cprintf("%d\t%s\t%d\t%p", cpu_milliseconds, state, p->sz);
+}
+#endif // CS333_P4
+
 #ifdef CS333_P3
 static void
 printcmd(struct proc *p) {
@@ -1354,7 +1398,7 @@ procdump(void)
       state = "???";
 
 #if defined(CS333_P4)
-  //procdumpP4(p, state);
+  procdumpP4(p, state);
 #elif defined(CS333_P2)
   procdumpP2(p, state);
 #elif defined(CS333_P1)
