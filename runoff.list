@@ -94,4 +94,3 @@ testuidgid_mod.c
 testsetuid.c
 p2-test.c
 p3-test.c
-z-test.c
