@@ -183,7 +183,11 @@ static char *syscallnames[] = {
   [SYS_halt]    "halt",
 #endif // PDX_XV6
   [SYS_date]    "date",
-#ifdef C333_P2
+#ifdef CS333_P4
+  [SYS_setpriority] "setpriority",
+  [SYS_getpriority] "getpriority",
+#endif // CS333_P4
+#ifdef CS333_P2
   [SYS_getuid]  "getuid",
   [SYS_getgid]  "getgid",
   [SYS_getppid] "getppid",
