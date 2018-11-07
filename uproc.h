@@ -6,7 +6,7 @@ struct uproc {
   uint uid;               // Process User ID
   uint gid;               // Process Group ID
   uint ppid;              // Parent process' ID
-  uint priority;
+  uint priority;          // Priority level of each process
   uint elapsed_ticks;     // Time since process started
   uint CPU_total_ticks;   // Total elapsed ticks in CPU
   char state[STRMAX];     // Process state
