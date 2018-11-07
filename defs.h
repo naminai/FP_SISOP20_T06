@@ -124,6 +124,10 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
+#ifdef CS333_P4
+int             setpriority(int pid, int priority);
+int             getpriority(int pid);
+#endif // CS333_P4
 #ifdef CS333_P3
 void            freedump(void);
 void            readydump(void);
