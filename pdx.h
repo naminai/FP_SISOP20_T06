@@ -27,9 +27,9 @@
 #endif // CS333_P2
 #ifdef CS333_P4
 #define DEFAULT_BUDGET (3*TPS)
-#define DEFAULT_PRIORITY 0
-#define TICKS_TO_PROMOTE (20*TPS)
-#define MAXPRIO 7 /* max prio. 0 <= prio <= MAXPRIO */
+//#define DEFAULT_PRIORITY 0
+//#define TICKS_TO_PROMOTE (20*TPS)
+//#define MAXPRIO 7 /* max prio. 0 <= prio <= MAXPRIO */
 #endif // CS333_P4
 #ifdef CS333_P5
 #define DEFAULT_MODE 0755
