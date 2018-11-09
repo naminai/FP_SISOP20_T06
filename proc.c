@@ -25,10 +25,7 @@ struct ptrs {
 };
 #endif // CS333_P3
 
-#ifdef CS333_P3
-#define statecount NELEM(states)
-#endif // CS333_P3
-
+// Process table struct
 static struct {
   struct spinlock lock;
   struct proc proc[NPROC];
@@ -36,19 +33,26 @@ static struct {
   struct ptrs list[statecount];
   #endif // CS333_P3
   #ifdef CS333_P4
-  struct ptrs ready[MAXPRIO+1};
+  struct ptrs ready[MAXPRIO+1];
   uint PromoteAtTime;
   #endif // CS333_P4
 } ptable;
 
 static struct proc *initproc;
-
 uint nextpid = 1;
 extern void forkret(void);
 extern void trapret(void);
 static void wakeup1(void* chan);
 #ifdef CS333_P4
 static void procdumpP4(struct proc* p, char* state);
+static void assertPriority(struct proc* p, int priority);
+static void promote(void);
+/*
+static void transition(struct proc** oldhead, struct proc** oldtail,
+  struct proc** newhead, struct proc** newtail,
+  enum procstate oldstate, enum procstate newstate,
+  struct proc* p);
+*/
 #endif // CS333_P4
 #ifdef CS333_P3
 // List management function prototypes
@@ -295,6 +299,10 @@ allocproc(void)
   p->cpu_ticks_total = 0;
   p->cpu_ticks_in = 0;
   #endif // CS333_P2
+  #ifdef CS333_P4
+  p->priority = MAXPRIO;
+  p->budget = BUDGET;
+  #endif // CS333_P4
   return p;
 }
 
@@ -364,7 +372,6 @@ void userinit(void)
 {
   struct proc *p;
   extern char _binary_initcode_start[], _binary_initcode_size[];
-
   #ifdef CS333_P3
   // Initialize lists; since the new lists are part of the oncurrent data structure ptable,
   // proper concurrency control must be used (ptable lock acquired and released correctly)
@@ -372,7 +379,12 @@ void userinit(void)
   initProcessLists();
   initFreeList();
   release(&ptable.lock);
-  #endif
+  #endif // CS333_P3
+  #ifdef CS333_P4
+  acquire(&ptable.lock);
+  ptable.PromoteAtTime = ticks + TICKS_TO_PROMOTE;
+  release(&ptable.lock);
+  #endif // CS333_P4
 
   // Routine calls allocproc() which is where a process will be removed from the free list and allocated
   p = allocproc();
@@ -390,6 +402,11 @@ void userinit(void)
   p->tf->esp = PGSIZE;
   p->tf->eip = 0;  // beginning of initcode.S
 
+  #ifdef CS333_P2
+  p->uid = DEFUID;
+  p->uid = DEFGID;
+  #endif // CS333_P2
+
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
 
@@ -402,7 +419,7 @@ void userinit(void)
   }
   assertState(p, EMBRYO);
   p->state = RUNNABLE;
-  stateListAdd(&ptable.list[RUNNABLE], p);
+  stateListAdd(&ptable.ready[MAXPRIO], p);
   release(&ptable.lock);
   #else
   // this assignment to p->state lets other cores
@@ -411,11 +428,6 @@ void userinit(void)
   // because the assignment might not be atomic.
   p->state = RUNNABLE;
   #endif
-
-  #ifdef CS333_P2
-  p->uid = DEFUID;
-  p->uid = DEFGID;
-  #endif // CS333_P2
 }
 
 // Grow current process's memory by n bytes.
@@ -502,7 +514,7 @@ fork(void)
   }
   assertState(np, EMBRYO);
   np->state = RUNNABLE;
-  stateListAdd(&ptable.list[RUNNABLE], np);
+  stateListAdd(&ptable.ready[MAXPRIO], np);
   #else
   np->state = RUNNABLE;
   #endif
@@ -541,14 +553,25 @@ exit(void)
   // Parent might be sleeping in wait().
   wakeup1(curproc->parent);
   // Search runnable list for abandoned children
-  p = ptable.list[RUNNABLE].head;
+  #ifdef CS333_P4
+  for(int i = 0; i <= MAXPRIO; ++i) {
+    p = ptable.ready[i].head;
+    while(p) {
+      if(p->parent == curproc)
+        p->parent = initproc;
+      p = p->next;
+    }
+  }
+  #endif // CS333_P4
+  // Search running list for abandoned children
+  p = ptable.list[RUNNING].head;
   while(p) {
     if(p->parent == curproc)
       p->parent = initproc;
     p = p->next;
   }
-  // Search running list for abandoned children
-  p = ptable.list[RUNNING].head;
+  // Search embryo list for abandoned children
+  p = ptable.list[EMBRYO].head;
   while(p) {
     if(p->parent == curproc)
       p->parent = initproc;
@@ -579,6 +602,7 @@ exit(void)
   assertState(curproc, RUNNING);
   curproc->state = ZOMBIE;
   stateListAdd(&ptable.list[ZOMBIE], curproc);
+  assertState(curproc, ZOMBIE);
 
   sched();
   panic("zombie exit");
@@ -665,6 +689,7 @@ wait(void)
         assertState(p, ZOMBIE);
         p->state = UNUSED;
         stateListAdd(&ptable.list[UNUSED], p);
+        assertState(p, UNUSED);
         p->pid = 0;
         p->parent = 0;
         p->name[0] = 0;
@@ -672,14 +697,6 @@ wait(void)
         release(&ptable.lock);
         return pid;
         }
-      p = p->next;
-    }
-
-    p = ptable.list[RUNNABLE].head;
-    while(p && !havekids) {
-      if(p->parent == curproc) {
-        havekids = 1;
-      }
       p = p->next;
     }
 
@@ -692,6 +709,24 @@ wait(void)
     }
 
     p = ptable.list[SLEEPING].head;
+    while(p && !havekids) {
+      if(p->parent == curproc) {
+        havekids = 1;
+      }
+      p = p->next;
+    }
+
+    for(int i = 0; i <= MAXPRIO; ++i) {
+      p = ptable.ready[i].head;
+      while(p) {
+        if(p->parent == curproc) {
+          havekids = 1;
+        }
+        p = p->next;
+      }
+    }
+
+    p = ptable.list[EMBRYO].head;
     while(p && !havekids) {
       if(p->parent == curproc) {
         havekids = 1;
@@ -788,32 +823,42 @@ scheduler(void)
 #endif // PDX_XV6
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    p = ptable.list[RUNNABLE].head;
-    if(p) {
+    #ifdef CS333_P4
+    if(ticks >= ptable.PromoteAtTime) {
+      promote();
+      ptable.PromoteAtTime = ticks + TICKS_TO_PROMOTE;
+    }
+    for(int i = 0; i <= MAXPRIO; ++i) {
+      p = ptable.ready[i].head;
+      if(p) {
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
-      int rc = stateListRemove(&ptable.list[RUNNABLE], p);
-      if(rc < 0) {
-        panic("Error: failed to remove process from RUNNABLE state list in scheduler()\n");
-      }
-      assertState(p, RUNNABLE);
 #ifdef PDX_XV6
       idle = 0;  // not idle this timeslice
 #endif // PDX_XV6
       c->proc = p;
       switchuvm(p);
+      p = ptable.ready[i].head;
+      int rc = stateListRemove(&ptable.ready[i], p);
+      if(rc < 0) {
+        panic("Error: failed to remove process from RUNNABLE state list in scheduler()\n");
+      }
+      assertState(p, RUNNABLE);
+      assertPriority(p, p->priority);
       p->state = RUNNING;
+      stateListAdd(&ptable.list[RUNNING], p);
+      assertState(p, RUNNING);
+#endif // CS333_P4
 #ifdef CS333_P2
       p->cpu_ticks_in = ticks;
 #endif // CS333_P2
-      stateListAdd(&ptable.list[RUNNING], p);
       swtch(&(c->scheduler), p->context);
       switchkvm();
-
       // Process is done running for now.
       // It should have changed its p->state before coming back.
       c->proc = 0;
+      }
     }
     release(&ptable.lock);
 #ifdef PDX_XV6
@@ -926,6 +971,15 @@ yield(void)
 {
   /* modified version of yield() */
   struct proc *curproc = myproc();
+  #ifdef CS333_P4
+  acquire(&ptable.lock);
+  curproc->budget -= (ticks - curproc->cpu_ticks_in);
+  if(curproc->budget <= 0 && curproc->priority < MAXPRIO) {
+    ++curproc->priority;
+    curproc->budget = BUDGET;
+  }
+  release(&ptable.lock);
+  #endif // CS333_P4
 
   acquire(&ptable.lock);  //DOC: yieldlock
   int rc = stateListRemove(&ptable.list[RUNNING], curproc);
@@ -934,7 +988,8 @@ yield(void)
   }
   assertState(curproc, RUNNING);
   curproc->state = RUNNABLE;
-  stateListAdd(&ptable.list[RUNNABLE], curproc);
+  stateListAdd(&ptable.ready[curproc->priority], curproc);
+
   sched();
   release(&ptable.lock);
 }
@@ -998,6 +1053,13 @@ sleep(void *chan, struct spinlock *lk)
   }
   // Go to sleep.
   p->chan = chan;
+  #ifdef CS333_P4
+  p->budget -= (ticks - p->cpu_ticks_in);
+  if(p->budget <= 0 && p->priority < MAXPRIO) {
+    ++p->priority;
+    p->budget = BUDGET;
+  }
+  #endif // CS333_P4
   int rc = stateListRemove(&ptable.list[RUNNING], p);
   if(rc < 0) {
     panic("Error: failed to remove process from RUNNING list in sleep()\n");
@@ -1005,6 +1067,7 @@ sleep(void *chan, struct spinlock *lk)
   assertState(p, RUNNING);
   p->state = SLEEPING;
   stateListAdd(&ptable.list[SLEEPING], p);
+
   sched();
 
   // Tidy up.
@@ -1074,7 +1137,7 @@ wakeup1(void *chan)
       }
       assertState(p, SLEEPING);
       p->state = RUNNABLE;
-      stateListAdd(&ptable.list[RUNNABLE], p);
+      stateListAdd(&ptable.ready[p->priority], p);
     }
     p = p->next;
   }
@@ -1116,16 +1179,6 @@ kill(int pid)
   struct proc *p;
   acquire(&ptable.lock);
 
-  p = ptable.list[RUNNABLE].head;
-  while(p) {
-    if(p->pid == pid) {
-      p->killed = 1;
-      release(&ptable.lock);
-      return 0;
-    }
-    p = p->next;
-  }
-
   p = ptable.list[RUNNING].head;
   while(p) {
     if(p->pid == pid) {
@@ -1135,6 +1188,20 @@ kill(int pid)
     }
     p = p->next;
   }
+
+  #ifdef CS333_P4
+  for(int i = 0; i <= MAXPRIO; ++i) {
+    p = ptable.ready[i].head;
+    while(p) {
+      if(p->pid == pid) {
+        p->killed = 1;
+        release(&ptable.lock);
+        return 0;
+      }
+      p = p->next;
+    }
+  }
+  #endif // CS333_P4
 
   p = ptable.list[SLEEPING].head;
   while(p) {
@@ -1146,7 +1213,27 @@ kill(int pid)
       }
       assertState(p, SLEEPING);
       p->state = RUNNABLE;
-      stateListAdd(&ptable.list[RUNNABLE], p);
+      stateListAdd(&ptable.ready[p->priority], p);
+      release(&ptable.lock);
+      return 0;
+    }
+    p = p->next;
+  }
+
+  p = ptable.list[EMBRYO].head;
+  while(p) {
+    if(p->pid == pid) {
+      p->killed = 1;
+      release(&ptable.lock);
+      return 0;
+    }
+    p = p->next;
+  }
+
+  p = ptable.list[ZOMBIE].head;
+  while(p) {
+    if(p->pid == pid) {
+      p->killed = 1;
       release(&ptable.lock);
       return 0;
     }
@@ -1278,7 +1365,7 @@ procdumpP4(struct proc* p, char* state)
   milliseconds = elapsed % 1000;
   elapsed = elapsed/1000;
   // Print
-  cprintf("%d\t%d\t%d\t%d.", p->uid, p->gid, ppid, elapsed);
+  cprintf("%d\t%d\t%d\t%d\t%d.", p->uid, p->gid, ppid, p->priority, elapsed);
   padmilliseconds(milliseconds);
   // Calculate CPU time
   cpu = p->cpu_ticks_total;
@@ -1325,10 +1412,21 @@ readydump(void)
 {
   struct proc* p;
   acquire(&ptable.lock);
-  p = ptable.list[RUNNABLE].head;
   cprintf("Ready List Processes: \n");
-  // helper function to print ready list
-  printcmd(p);
+  for(int i = 0; i <= MAXPRIO; ++i) {
+    p = ptable.ready[i].head;
+    // %d represents MAXPRIO, MAXPRIO-1, MAXPRIO-2, etc.
+    cprintf("%d: ", i);
+    while(p) {
+      cprintf("(%d, %d)", p->pid, p->budget);
+      if(p->next)
+        cprintf(" -> ");
+      else
+        cprintf("\n");
+      p = p->next;
+    }
+  cprintf("\n");
+  }
   release(&ptable.lock);
 }
 
@@ -1457,6 +1555,9 @@ getprocs(uint max, struct uproc* table)
       safestrcpy(table->state, states[p->state], STRMAX);
       table->size = p->sz;
       safestrcpy(table->name, p->name, STRMAX);
+      #ifdef CS333_P4
+      table->priority = p->priority;
+      #endif // CS333_P4
       ++table;
     }
     ++p;
@@ -1465,3 +1566,158 @@ getprocs(uint max, struct uproc* table)
   return count;
 }
 #endif // CS333_P2
+
+#ifdef CS333_P4
+int
+setpriority(int pid, int priority)
+{
+  acquire(&ptable.lock);
+  struct proc* p = ptable.list[RUNNING].head;
+  while(p) {
+    if(p->pid == pid) {
+      p->priority = priority;
+      p->budget = BUDGET;
+      release(&ptable.lock);
+      return 0;
+    }
+    p = p->next;
+  }
+  for(int i = 0; i <= MAXPRIO; ++i) {
+    p = ptable.ready[i].head;
+    while(p) {
+      if(p->pid == pid) {
+        p->priority = priority;
+        p->budget = BUDGET;
+        if(priority != i) {
+          int rc = stateListRemove(&ptable.ready[i], p);
+          if(rc < 0) {
+            panic("Error: failed to remove process from RUNNING list in yield()\n");
+          }
+          stateListAdd(&ptable.ready[priority], p);
+          assertState(p, RUNNABLE);
+          p->state = RUNNABLE;
+          stateListAdd(&ptable.ready[priority], p);
+        }
+        release(&ptable.lock);
+        return 0;
+      }
+      p = p->next;
+    }
+   }
+   p = ptable.list[SLEEPING].head;
+   while(p) {
+     if(p->pid == pid) {
+       p->priority = priority;
+       p->budget = BUDGET;
+       release(&ptable.lock);
+       return 0;
+     }
+     p = p->next;
+   }
+   p = ptable.list[EMBRYO].head;
+   while(p) {
+     if(p->pid == pid) {
+       p->priority = priority;
+       p->budget = BUDGET;
+       release(&ptable.lock);
+       return 0;
+     }
+     p = p->next;
+   }
+   p = ptable.list[ZOMBIE].head;
+   while(p) {
+     if(p->pid == pid) {
+       p->priority = priority;
+       p->budget = BUDGET;
+       release(&ptable.lock);
+       return 0;
+     }
+     p = p->next;
+   }
+   release(&ptable.lock);
+   return -1;
+}
+
+int
+getpriority(int pid)
+{
+  int priority;
+  acquire(&ptable.lock);
+  struct proc* p;
+  p = ptable.list[RUNNING].head;
+  while(p) {
+    if(p->pid == pid) {
+      priority = p->priority;
+      release(&ptable.lock);
+      return priority;
+    }
+    p = p->next;
+  }
+  p = ptable.list[SLEEPING].head;
+  while(p) {
+    if(p->pid == pid) {
+      priority = p->priority;
+      release(&ptable.lock);
+      return priority;
+    }
+    p = p->next;
+  }
+  p = ptable.list[RUNNABLE].head;
+  while(p) {
+    if(p->pid == pid) {
+      priority = p->priority;
+      release(&ptable.lock);
+      return priority;
+    }
+    p = p->next;
+  }
+  release(&ptable.lock);
+  return -1;
+}
+
+static void
+assertPriority(struct proc* p, int priority) {
+  if(p->priority != priority) {
+    cprintf("Failure: p->priority is %s and p->priority should be %s", p->priority, priority);
+    panic("Kernel panic\n");
+  }
+}
+
+static void
+promote(void)
+{
+  struct proc* p;
+  p = ptable.list[RUNNING].head;
+  while(p) {
+    if(p->priority > 0) {
+      p->priority -= 1;
+      p->budget = BUDGET;
+    }
+    p = p->next;
+  }
+  p = ptable.list[SLEEPING].head;
+  while(p) {
+    if(p->priority > 0) {
+      p->priority -= 1;
+      p->budget = BUDGET;
+    }
+    p = p->next;
+  }
+  for(int i = 1; i <= MAXPRIO; ++i) {
+    p = ptable.ready[i].head;
+    while(p) {
+    // rc is the return code that indicates success or failure
+      int rc = stateListRemove(&ptable.ready[i], p);
+      if(rc < 0) {
+        panic("Error: failed to remove process from READY list in promote()\n");
+      }
+      assertState(p, RUNNABLE);
+      p->state = RUNNABLE;
+      stateListAdd(&ptable.ready[i-1], p);
+      p->priority -= 1;
+      p->budget = BUDGET;
+      p = p->next;
+    }
+  }
+}
+#endif // CS333_P4
