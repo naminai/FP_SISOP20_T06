@@ -3,7 +3,11 @@
 #include "user.h"
 #include "uproc.h"
 
+#ifdef CS333_P4
+#define HEADER "\nPID\tName\tUID\tGID\tPPID\tPrio\tElapsed\tCPU\tState\tSize\n"
+#elif CS333_P2
 #define HEADER "\nPID\tName\tUID\tGID\tPPID\tElapsed\tCPU\tState\tSize\n"
+#endif
 
 static void padmilliseconds(int);
 static void ps();
@@ -47,8 +51,13 @@ ps()
 
       // Print pid, name
       printf(1, "%d\t%s\t", table[i].pid, table[i].name);
+      #ifdef CS333_P4
+      // Print uid, gid, ppid, priority, elapsed (seconds)
+      printf(1, "%d\t%d\t%d\t%d\t%d.", table[i].uid, table[i].gid, table[i].ppid, table[i].priority, elapsed);
+      #elif CS333_P2
       // Print uid, gid, ppid, elapsed (seconds)
       printf(1, "%d\t%d\t%d\t%d.", table[i].uid, table[i].gid, table[i].ppid, elapsed);
+      #endif
       padmilliseconds(milliseconds);
       // Print elapsed (milliseconds), cpu (seconds)
       printf(1, "%d\t%d.", milliseconds, cpu);
