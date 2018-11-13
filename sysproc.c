@@ -195,7 +195,9 @@ sys_setpriority(void)
 int
 sys_getpriority(void)
 {
-  int pid = 0;
+  int pid;
+  if(argint(0, &pid) < 0)
+    return -1;
   return getpriority(pid);
 }
 #endif // CS333_P4
