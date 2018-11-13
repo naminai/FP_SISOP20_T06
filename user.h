@@ -27,9 +27,10 @@ char* sbrk(int);
 int sleep(int);
 int uptime(void);
 int halt(void);
-#ifdef CS333_P1
-int date(struct rtcdate*);
-#endif // CS333_P1
+#ifdef CS333_P4
+int setpriority(int pid, int priority);
+int getpriority(int pid);
+#endif // CS333_P4
 #ifdef CS333_P2
 uint getuid(void);  // UID of the current process
 uint getgid(void);  // GID of the current process
@@ -38,6 +39,9 @@ int setuid(uint);   // Set UID
 int setgid(uint);   // Set GID
 int getprocs(uint, struct uproc*); // Return number of entries used in the table
 #endif // CS333_P2
+#ifdef CS333_P1
+int date(struct rtcdate*);
+#endif // CS333_P1
 
 // ulib.c
 int stat(char*, struct stat*);

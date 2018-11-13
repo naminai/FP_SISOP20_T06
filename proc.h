@@ -49,6 +49,10 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+  #ifdef CS333_P4
+  uint priority;
+  int budget;
+  #endif // CS333_P4
   #ifdef CS333_P3
   struct proc* next;           // Pointer to the next item in each list, and each list
   #endif // CS333_P3           // corresponds to a state of the xv6 state transition model

@@ -176,3 +176,28 @@ sys_getprocs(void)
   return getprocs(max,table);
 }
 #endif // CS333_P2
+#ifdef CS333_P4
+int
+sys_setpriority(void)
+{
+  int pid;
+  int priority;
+  // validate user input
+  if(argint(0, &pid) < 0)
+    return -1;
+  if(argint(1, &priority) < 0)
+    return -1;
+  if(pid < 0 || priority < 0 || priority > MAXPRIO)
+    return -1;
+  return setpriority(pid, priority);
+}
+
+int
+sys_getpriority(void)
+{
+  int pid;
+  if(argint(0, &pid) < 0)
+    return -1;
+  return getpriority(pid);
+}
+#endif // CS333_P4
