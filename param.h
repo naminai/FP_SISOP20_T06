@@ -15,10 +15,15 @@
 #else
 #define FSSIZE       1000  // size of file system in blocks
 #endif // PDX_XV6
+#ifdef CS333_P5
+// DEFAULT_UID is the default value for both the first process and files
+// created by mkfs when the file system is created
+#define DEFAULT_MODE 0755
+#endif // CS333_P5
 #ifdef CS333_P3
 #define statecount NELEM(states)
 #endif // CS333_P3
 #ifdef CS333_P2
-#define DEFUID       0   // default uid
-#define DEFGID       0   // default gid
+#define DEFAULT_UID  0   // default uid
+#define DEFAULT_GID  0   // default gid
 #endif // CS333_P2

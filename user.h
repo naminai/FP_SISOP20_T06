@@ -27,6 +27,11 @@ char* sbrk(int);
 int sleep(int);
 int uptime(void);
 int halt(void);
+#ifdef CS333_P5
+int chmod(char *pathname, int mode);
+int chown(char *pathname, int owner);
+int chgrp(char *pathname, int group);
+#endif // CS333_P5
 #ifdef CS333_P4
 int setpriority(int pid, int priority);
 int getpriority(int pid);

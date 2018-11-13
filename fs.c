@@ -205,6 +205,11 @@ ialloc(uint dev, short type)
     if(dip->type == 0){  // a free inode
       memset(dip, 0, sizeof(*dip));
       dip->type = type;
+      #ifdef CS333_P5
+      dip->uid = DEFAULT_UID;
+      dip->gid = DEFAULT_GID;
+      dip->mode.asInt = DEFAULT_MODE;
+      #endif // CS333_P5
       log_write(bp);   // mark it allocated on the disk
       brelse(bp);
       return iget(dev, inum);
@@ -231,6 +236,11 @@ iupdate(struct inode *ip)
   dip->minor = ip->minor;
   dip->nlink = ip->nlink;
   dip->size = ip->size;
+  #ifdef CS333_P5
+  dip->uid = ip->uid;
+  dip->gid = ip->gid;
+  dip->mode.asInt = ip->mode.asInt;
+  #endif // CS333_P5
   memmove(dip->addrs, ip->addrs, sizeof(ip->addrs));
   log_write(bp);
   brelse(bp);
@@ -304,6 +314,11 @@ ilock(struct inode *ip)
     ip->minor = dip->minor;
     ip->nlink = dip->nlink;
     ip->size = dip->size;
+    #ifdef CS333_P5
+    ip->uid = dip->uid;
+    ip->gid = dip->gid;
+    ip->mode = dip->mode;
+    #endif // CS333_P5
     memmove(ip->addrs, dip->addrs, sizeof(ip->addrs));
     brelse(bp);
     ip->valid = 1;
@@ -445,6 +460,11 @@ stati(struct inode *ip, struct stat *st)
   st->type = ip->type;
   st->nlink = ip->nlink;
   st->size = ip->size;
+  #ifdef CS333_P5
+  st->uid = ip->uid;
+  st->gid = ip->gid;
+  st->mode.asInt = ip->mode.asInt;
+  #endif // CS333_P5
 }
 
 //PAGEBREAK!
@@ -670,3 +690,42 @@ nameiparent(char *path, char *name)
   return namex(path, 1, name);
 }
 
+#ifdef CS333_P5
+int
+chmod(struct inode *ip, int mode)
+{
+  if(mode > 01777)
+    return -1;
+  begin_op();
+  ilock(ip);
+  ip->mode.asInt = mode;
+  iunlock(ip);
+  iupdate(ip);
+  end_op();
+  return 0;
+}
+
+int
+chown(struct inode *ip, int owner)
+{
+  begin_op();
+  ilock(ip);
+  ip->uid = owner;
+  iunlock(ip);
+  iupdate(ip);
+  end_op();
+  return 0;
+}
+
+int
+chgrp(struct inode *ip, int group)
+{
+  begin_op();
+  ilock(ip);
+  ip->gid = group;
+  iunlock(ip);
+  iupdate(ip);
+  end_op();
+  return 0;
+}
+#endif // CS333_P5
