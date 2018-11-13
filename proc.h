@@ -51,7 +51,7 @@ struct proc {
   char name[16];               // Process name (debugging)
   #ifdef CS333_P4
   uint priority;
-  uint budget;
+  int budget;
   #endif // CS333_P4
   #ifdef CS333_P3
   struct proc* next;           // Pointer to the next item in each list, and each list

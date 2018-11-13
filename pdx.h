@@ -26,10 +26,11 @@
 #define DEFAULT_GID 0
 #endif // CS333_P2
 #ifdef CS333_P4
-#define DEFAULT_BUDGET (3*TPS)
-//#define DEFAULT_PRIORITY 0
-//#define TICKS_TO_PROMOTE (20*TPS)
-//#define MAXPRIO 7 /* max prio. 0 <= prio <= MAXPRIO */
+#define DEFAULT_BUDGET (1*TPS)
+#define DEFAULT_PRIORITY MAXPRIO
+#define TICKS_TO_PROMOTE (3*TPS) // number of ticks that will elapse before priorities are adjusted
+#define MAXPRIO 6       // max prio. 0 <= prio <= MAXPRIO (number of priority queues)
+#define BUDGET 300     // time allocation for process in CPU before demotion
 #endif // CS333_P4
 #ifdef CS333_P5
 #define DEFAULT_MODE 0755

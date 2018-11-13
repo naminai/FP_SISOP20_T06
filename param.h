@@ -15,11 +15,6 @@
 #else
 #define FSSIZE       1000  // size of file system in blocks
 #endif // PDX_XV6
-#ifdef CS333_P4
-#define TICKS_TO_PROMOTE 3000 // number of ticks that will elapse before priorities are adjusted
-#define BUDGET       1000     // time allocation for process in CPU before demotion
-#define MAXPRIO      6        // number of priority queues (MAXPRIO + 1)
-#endif // CS333_P4
 #ifdef CS333_P3
 #define statecount NELEM(states)
 #endif // CS333_P3
@@ -27,5 +22,3 @@
 #define DEFUID       0   // default uid
 #define DEFGID       0   // default gid
 #endif // CS333_P2
-
-
