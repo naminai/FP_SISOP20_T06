@@ -7,6 +7,9 @@
 #include "proc.h"
 #include "spinlock.h"
 #include "uproc.h"
+#ifdef CS333_P4
+#include "pdx.h"
+#endif // CS333_P4
 
 static char *states[] = {
 [UNUSED]    "unused",
@@ -47,12 +50,6 @@ static void wakeup1(void* chan);
 static void procdumpP4(struct proc* p, char* state);
 static void assertPriority(struct proc* p, int priority);
 static void promote(void);
-/*
-static void transition(struct proc** oldhead, struct proc** oldtail,
-  struct proc** newhead, struct proc** newtail,
-  enum procstate oldstate, enum procstate newstate,
-  struct proc* p);
-*/
 #endif // CS333_P4
 #ifdef CS333_P3
 // List management function prototypes
@@ -410,7 +407,7 @@ void userinit(void)
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
 
-  #ifdef CS333_P3
+  #if defined(CS333_P3) || defined(CS333_P4)
   // EMBRYO to RUNNABLE state transition
   acquire(&ptable.lock);
   int rc = stateListRemove(&ptable.list[EMBRYO], p);
@@ -507,7 +504,7 @@ fork(void)
   pid = np->pid;
 
   acquire(&ptable.lock);
-  #ifdef CS333_P3
+  #if defined(CS333_P3) || defined(CS333_P4)
   int rc = stateListRemove(&ptable.list[EMBRYO], np);
   if(rc < 0) {
     panic("Error: failed to remove process from EMBRYO state list in fork()\n");
@@ -823,7 +820,7 @@ scheduler(void)
 #endif // PDX_XV6
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    #ifdef CS333_P4
+#ifdef CS333_P4
     if(ticks >= ptable.PromoteAtTime) {
       promote();
       ptable.PromoteAtTime = ticks + TICKS_TO_PROMOTE;
@@ -848,7 +845,6 @@ scheduler(void)
       assertPriority(p, p->priority);
       p->state = RUNNING;
       stateListAdd(&ptable.list[RUNNING], p);
-      assertState(p, RUNNING);
 #endif // CS333_P4
 #ifdef CS333_P2
       p->cpu_ticks_in = ticks;
@@ -974,8 +970,8 @@ yield(void)
   #ifdef CS333_P4
   acquire(&ptable.lock);
   curproc->budget -= (ticks - curproc->cpu_ticks_in);
-  if(curproc->budget <= 0 && curproc->priority < MAXPRIO) {
-    ++curproc->priority;
+  if(curproc->budget <= 0 && curproc->priority > 0 && curproc->priority <= MAXPRIO) {
+    --curproc->priority;
     curproc->budget = BUDGET;
   }
   release(&ptable.lock);
@@ -1055,8 +1051,8 @@ sleep(void *chan, struct spinlock *lk)
   p->chan = chan;
   #ifdef CS333_P4
   p->budget -= (ticks - p->cpu_ticks_in);
-  if(p->budget <= 0 && p->priority < MAXPRIO) {
-    ++p->priority;
+  if(p->budget <= 0 && p->priority > 0) {
+    --p->priority;
     p->budget = BUDGET;
   }
   #endif // CS333_P4
@@ -1413,7 +1409,7 @@ readydump(void)
   struct proc* p;
   acquire(&ptable.lock);
   cprintf("Ready List Processes: \n");
-  for(int i = 0; i <= MAXPRIO; ++i) {
+  for(int i = MAXPRIO; i >= 0; --i) {
     p = ptable.ready[i].head;
     // %d represents MAXPRIO, MAXPRIO-1, MAXPRIO-2, etc.
     cprintf("%d: ", i);
@@ -1516,7 +1512,7 @@ procdump(void)
 
 #ifdef CS333_P2
 int
-setuid(int*  uid)
+setuid(int* uid)
 {
   acquire(&ptable.lock);
   myproc()->uid = * uid;
@@ -1541,7 +1537,7 @@ getprocs(uint max, struct uproc* table)
 
   acquire(&ptable.lock);
   while(p < &ptable.proc[NPROC] && count < max) {
-    if(p-> state != UNUSED && p->state != EMBRYO) {
+    if(p->state != UNUSED && p->state != EMBRYO) {
       table->pid = p->pid;
       table->uid = p->uid;
       table->gid = p->gid;
@@ -1572,7 +1568,11 @@ int
 setpriority(int pid, int priority)
 {
   acquire(&ptable.lock);
-  struct proc* p = ptable.list[RUNNING].head;
+  struct proc* p = ptable.proc;
+  if(pid < 0 || priority < 0 || priority > MAXPRIO)
+    return -1;
+
+  p = ptable.list[RUNNING].head;
   while(p) {
     if(p->pid == pid) {
       p->priority = priority;
@@ -1582,7 +1582,7 @@ setpriority(int pid, int priority)
     }
     p = p->next;
   }
-  for(int i = 0; i <= MAXPRIO; ++i) {
+  for(int i = 0; i < MAXPRIO; ++i) {
     p = ptable.ready[i].head;
     while(p) {
       if(p->pid == pid) {
@@ -1591,12 +1591,11 @@ setpriority(int pid, int priority)
         if(priority != i) {
           int rc = stateListRemove(&ptable.ready[i], p);
           if(rc < 0) {
-            panic("Error: failed to remove process from RUNNING list in yield()\n");
+            panic("Error: failed to remove process from RUNNING list in setpriority()\n");
           }
-          stateListAdd(&ptable.ready[priority], p);
-          assertState(p, RUNNABLE);
           p->state = RUNNABLE;
-          stateListAdd(&ptable.ready[priority], p);
+          stateListAdd(&ptable.ready[priority+1], p);
+          assertPriority(p, p->priority);
         }
         release(&ptable.lock);
         return 0;
@@ -1641,8 +1640,8 @@ setpriority(int pid, int priority)
 int
 getpriority(int pid)
 {
-  int priority;
   acquire(&ptable.lock);
+  int priority;
   struct proc* p;
   p = ptable.list[RUNNING].head;
   while(p) {
@@ -1662,16 +1661,19 @@ getpriority(int pid)
     }
     p = p->next;
   }
-  p = ptable.list[RUNNABLE].head;
-  while(p) {
-    if(p->pid == pid) {
-      priority = p->priority;
-      release(&ptable.lock);
-      return priority;
+  for(int i = 0; i <= MAXPRIO; ++i) {
+    p = ptable.ready[i].head;
+    while(p) {
+      if(p->pid == pid) {
+        priority = p->priority;
+        release(&ptable.lock);
+        return priority;
+        }
+      p = p->next;
     }
-    p = p->next;
   }
   release(&ptable.lock);
+  cprintf("Process with pid %d not found.\n", pid);
   return -1;
 }
 
@@ -1689,21 +1691,21 @@ promote(void)
   struct proc* p;
   p = ptable.list[RUNNING].head;
   while(p) {
-    if(p->priority > 0) {
-      p->priority -= 1;
+    if(p->priority < MAXPRIO && p->priority >= 0) {
+      ++p->priority;
       p->budget = BUDGET;
     }
     p = p->next;
   }
   p = ptable.list[SLEEPING].head;
   while(p) {
-    if(p->priority > 0) {
-      p->priority -= 1;
+    if(p->priority < MAXPRIO && p->priority >= 0) {
+      ++p->priority;
       p->budget = BUDGET;
     }
     p = p->next;
   }
-  for(int i = 1; i <= MAXPRIO; ++i) {
+  for(int i = 0; i < MAXPRIO; ++i) {
     p = ptable.ready[i].head;
     while(p) {
     // rc is the return code that indicates success or failure
@@ -1713,8 +1715,8 @@ promote(void)
       }
       assertState(p, RUNNABLE);
       p->state = RUNNABLE;
-      stateListAdd(&ptable.ready[i-1], p);
-      p->priority -= 1;
+      stateListAdd(&ptable.ready[i+1], p);
+      ++p->priority;
       p->budget = BUDGET;
       p = p->next;
     }
