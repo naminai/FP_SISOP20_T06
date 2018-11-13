@@ -95,3 +95,4 @@ testsetuid.c
 p2-test.c
 p3-test.c
 p4-test.c
+mlfq.c
