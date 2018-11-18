@@ -12,7 +12,7 @@ main(int argc, char *argv[])
       if(chgrp(argv[2], atoi(argv[1])))
         printf(1, "chgrp %s failed \n", argv[2]);
       else
-        printf(1, "Invalid argument for group\n");
+        printf(1, "Invalid argument for group ID\n");
     else
       printf(1, "Invalid number of arguments for chgrp\n");
   }
