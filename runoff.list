@@ -99,3 +99,6 @@ mlfq.c
 chmod.c
 chown.c
 chgrp.c
+p5-test.c
+p5-test.h
+print_mode.c

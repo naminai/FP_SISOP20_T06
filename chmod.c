@@ -12,9 +12,9 @@ main(int argc, char *argv[])
       if(chmod(argv[2], atoo(argv[1])))
         printf(1, "chmod %s failed\n", argv[2]);
       else
-        printf(1, "Invalid argument for mode\n");
+        printf(1, "Updating permissions...\n");
     else
-        printf(1, "Invalid number of arguments for chmod\n");
+        printf(1, "Invalid argument(s) for chmod...\n");
   }
   exit();
 }
