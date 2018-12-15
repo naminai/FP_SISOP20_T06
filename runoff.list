@@ -96,3 +96,9 @@ p2-test.c
 p3-test.c
 p4-test.c
 mlfq.c
+chmod.c
+chown.c
+chgrp.c
+p5-test.c
+p5-test.h
+print_mode.c

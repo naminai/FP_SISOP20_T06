@@ -400,8 +400,8 @@ void userinit(void)
   p->tf->eip = 0;  // beginning of initcode.S
 
   #ifdef CS333_P2
-  p->uid = DEFUID;
-  p->uid = DEFGID;
+  p->uid = DEFAULT_UID;
+  p->uid = DEFAULT_GID;
   #endif // CS333_P2
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
