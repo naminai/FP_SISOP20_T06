@@ -1,6 +1,7 @@
 // A grand unified test for CS333 project 5.
 // P5 adds protection (via UNIX-like mode bits) to xv6. This
 // program is provided for testing.
+
 #ifdef CS333_P5
 
 #include "types.h"
@@ -347,5 +348,4 @@ main(int argc, char *argv[])
   free(buf);
   exit();
 }
-
-#endif
+#endif // CS333_P5

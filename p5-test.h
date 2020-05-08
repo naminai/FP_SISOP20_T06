@@ -34,4 +34,5 @@ int testperms[][4] = {
   {111, 222, 333, 444}, // match on other
   {111, 222, 111, 222},
 };
-#endif
+
+#endif // CS333_P5

@@ -57,6 +57,20 @@ print_mode(struct stat* st)
   else
     printf(1, "-");
 
+  printf(1, "\t");
+
+  if (st->uid == 0)
+    printf(1, "root");
+  else
+    printf(1, "user");
+
+  printf(1, "\t");
+
+  if (st->gid == 0)
+    printf(1, "root");
+  else
+    printf(1, "user");
+
   return;
 }
 #endif

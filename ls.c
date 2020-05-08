@@ -45,14 +45,14 @@ ls(char *path)
   }
 
   #ifdef CS333_P5
-  printf(1, "mode\t\tname\t\tuid\tgid\tinode\tsize\n");
+  printf(1, "mode\t\towner\tgroup\tname\t\tinode\tsize\n");
   #endif // CS333_P5
 
   switch(st.type){
   case T_FILE:
   #ifdef CS333_P5
   print_mode(&st);
-  printf(1, "\t%s\t%d\t%d\t%d\t%d\n", fmtname(path), st.uid, st.gid, st.ino, st.size);
+  printf(1, "\t%s\t%d\t%d\n", fmtname(path), st.ino, st.size);
   #else
   printf(1, "%s %d %d %d\n", fmtname(path), st.type, st.ino, st.size);
   #endif
@@ -80,7 +80,7 @@ ls(char *path)
       }
       #ifdef CS333_P5
       print_mode(&st);
-      printf(1, "\t%s\t%d\t%d\t%d\t%d\n", fmtname(buf), st.uid, st.gid, st.ino, st.size);
+      printf(1, "\t%s\t%d\t%d\n", fmtname(buf), st.ino, st.size);
       #else
       printf(1, "%s %d %d %d\n", fmtname(buf), st.type, st.ino, st.size);
       #endif
